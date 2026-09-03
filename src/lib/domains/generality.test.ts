@@ -28,7 +28,7 @@ const invented: DomainSpec = {
   route: '/demo',
   taskTitle: 'Clinic intake',
   subject: 'form',
-  readTools: ['getIntake', 'getIntakeRequirements', 'listIntakeDocuments', 'readIntakeDocument'],
+  readTools: ['getIntake', 'getIntakeRequirements', 'listIntakeDocuments', 'readIntakeDocument', 'checkIntake'],
   writeTools: ['updateIntake'],
   uploadTools: ['attachIntakeDocument'],
   submitTools: ['submitIntake'],
@@ -41,9 +41,11 @@ const invented: DomainSpec = {
     'attachIntakeDocument',
     'updateIntake',
     'submitIntake',
+    'checkIntake',
   ],
   irreversibleTools: ['submitIntake'],
   operationOf: {
+    checkIntake: 'READ',
     getIntake: 'READ',
     getIntakeRequirements: 'READ',
     listIntakeDocuments: 'READ',
@@ -105,7 +107,7 @@ describe('the scholarship is not special', () => {
   it('gets its tools from the same factory as every other workspace', () => {
     for (const domain of FORM_DOMAINS) {
       const tools = makeFormTools(domain)
-      expect(tools).toHaveLength(7)
+      expect(tools).toHaveLength(8)
       expect(tools.map((t) => t.name)).toEqual(domain.allTools)
     }
   })
@@ -122,7 +124,7 @@ describe('the scholarship is not special', () => {
 })
 
 describe('a workspace the app has never heard of', () => {
-  it('gets seven working WebMCP tools with no new code', () => {
+  it('gets eight working WebMCP tools with no new code', () => {
     const tools = makeFormTools(invented)
     expect(tools.map((t) => t.name)).toEqual(invented.allTools)
     tools.forEach((t) => {

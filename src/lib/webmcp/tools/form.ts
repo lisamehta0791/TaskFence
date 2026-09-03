@@ -1,7 +1,7 @@
 /**
  * WebMCP tools for any form-shaped workspace.
  *
- * These are real, registered tools — the site hands an agent seven callable
+ * These are real, registered tools — the site hands an agent eight callable
  * capabilities per workspace, and every one of them runs through `guarded()`,
  * so the rules decide whether it executes *before* it executes.
  *
@@ -27,8 +27,10 @@ import type { DomainSpec } from '../../domains/types'
 import { getRecordStore } from '../../store/recordStore'
 import type { WebMCPTool } from '../adapter'
 import { guarded } from '../guard'
+import { checkRecordValues, describeProblem } from '../../validation/format'
+import { verifyDocumentClaim } from '../../documents/provenance'
 
-/** The seven tools a form workspace exposes, named per domain. */
+/** The eight tools a form workspace exposes, named per domain. */
 export interface FormToolNames {
   get: string
   requirements: string
@@ -37,11 +39,12 @@ export interface FormToolNames {
   uploadDocument: string
   update: string
   submit: string
+  check: string
 }
 
 export function formToolNames(domain: DomainSpec): FormToolNames {
-  const [get, requirements, listDocuments, readDocument, uploadDocument, update, submit] = domain.allTools
-  return { get, requirements, listDocuments, readDocument, uploadDocument, update, submit }
+  const [get, requirements, listDocuments, readDocument, uploadDocument, update, submit, check] = domain.allTools
+  return { get, requirements, listDocuments, readDocument, uploadDocument, update, submit, check }
 }
 
 export function makeFormTools(domain: DomainSpec): WebMCPTool[] {
@@ -234,7 +237,7 @@ export function makeFormTools(domain: DomainSpec): WebMCPTool[] {
     {
       name: n.update,
       description:
-        `Write a value into one field of the ${noun}. IMPORTANT: set \`source\` honestly — "document" if you read the value out of a document on this page, "human" if the person just told you, "inference" if you worked it out yourself. The active delegation may allow, block or pause the write depending on the source and on whether the field is already answered.`,
+        `Write a value into one field of the ${noun}. IMPORTANT: set \`source\` honestly — "document" if you read the value out of a document on this page, "human" if the person just told you, "inference" if you worked it out yourself. The active delegation may allow, block or pause the write depending on the source and on whether the field is already answered. This site VERIFIES a "document" claim against the document's actual text: if the value is not in it, the write is treated as "inference" instead and will usually be sent to the human. Claiming "document" for a value you did not read there gains you nothing.`,
       inputSchema: {
         type: 'object',
         properties: {
@@ -254,9 +257,21 @@ export function makeFormTools(domain: DomainSpec): WebMCPTool[] {
       execute: (input) => {
         const field = String(input.field ?? '')
         const value = String(input.value ?? '')
-        const source = (input.source as 'document' | 'human' | 'inference' | undefined) ?? 'unknown'
+        const claimedSource = (input.source as 'document' | 'human' | 'inference' | undefined) ?? 'unknown'
         const documentId = input.documentId ? String(input.documentId) : undefined
         const existing = store().values[field]?.value ?? ''
+
+        // The agent says where this came from. The site checks, because that
+        // claim is what unlocks "fill the blanks from my documents" — see
+        // provenance.ts. A claim that does not hold up becomes a guess, and the
+        // rules then treat it like any other guess.
+        const claim = verifyDocumentClaim({
+          source: claimedSource as never,
+          value,
+          documentId,
+          documents: store().documents,
+        })
+        const source = claimedSource === 'document' ? claim.source : claimedSource
 
         return guarded(
           {
@@ -266,10 +281,14 @@ export function makeFormTools(domain: DomainSpec): WebMCPTool[] {
             field,
             source: source as never,
             title: existing.trim() ? 'Change an existing answer' : 'Fill a blank field',
-            detail: `${label(field)} → “${value}”`,
-            intent: existing.trim()
-              ? `Change ${label(field)} from “${existing}” to “${value}”`
-              : `Set ${label(field)} to “${value}”`,
+            detail: claim.note
+              ? `${label(field)} → “${value}” · unverified claim`
+              : `${label(field)} → “${value}”`,
+            intent: `${
+              existing.trim()
+                ? `Change ${label(field)} from “${existing}” to “${value}”`
+                : `Set ${label(field)} to “${value}”`
+            }${claim.note ? ` — ${claim.note}` : ''}`,
           },
           (args) => {
             // `args.value` — not the closure — because the human may have edited
@@ -282,13 +301,18 @@ export function makeFormTools(domain: DomainSpec): WebMCPTool[] {
             if (s.submitted) {
               throw new Error(`This ${noun} has already been submitted and can no longer be edited.`)
             }
-            s.setValue(field, finalValue, 'agent', documentId)
+            // Only record the document as the origin if the claim held up.
+            s.setValue(field, finalValue, 'agent', claim.verified ? documentId : undefined)
             return {
               field,
               value: finalValue,
               previousValue: existing,
               label: label(field),
               amendedByHuman: finalValue !== value,
+              sourceUsed: source,
+              sourceClaimed: claimedSource,
+              ...(claim.note ? { claimRejected: claim.note } : {}),
+              ...(claim.verified ? { verifiedAgainst: claim.documentName } : {}),
             }
           },
         )
@@ -319,6 +343,13 @@ export function makeFormTools(domain: DomainSpec): WebMCPTool[] {
           () => {
             const s = store()
             if (s.submitted) throw new Error('Already submitted.')
+            if (!s.fields.length) {
+              // With zero fields the required-fields check below is vacuously
+              // satisfied, which once let an empty record be "submitted".
+              throw new Error(
+                `This ${noun} has no fields at all — there is nothing to submit. Add fields (or upload the form document) first.`,
+              )
+            }
             const missing = s.fields
               .filter((f) => f.required && !(s.values[f.id]?.value ?? '').trim())
               .map((f) => f.id)
@@ -327,6 +358,43 @@ export function makeFormTools(domain: DomainSpec): WebMCPTool[] {
             }
             const { reference, submittedAt } = s.submit()
             return { reference, submittedAt, message: `${noun} submitted.` }
+          },
+        ),
+    },
+    {
+      name: n.check,
+      description:
+        `Check every answer already on the ${noun} for values that do not look valid — a malformed email address, a phone number with letters in it, a date that is not a date, a blank line left over from a printed form. Read-only: it reports problems and changes nothing. Use it to tell the human what is wrong; fixing anything still needs a write, which the delegation governs.`,
+      inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+      annotations: { readOnlyHint: true, untrustedContentHint: false },
+      execute: (input) =>
+        guarded(
+          {
+            domain,
+            tool: n.check,
+            args: input,
+            title: `Check ${noun}`,
+            intent: `Check the answers on the ${noun} for anything malformed`,
+          },
+          () => {
+            const { fields, values } = store()
+            const problems = checkRecordValues(fields, values)
+            const answered = fields.filter((f) => (values[f.id]?.value ?? '').trim()).length
+            return {
+              checked: answered,
+              problems: problems.map((p) => ({
+                field: p.fieldId,
+                label: p.label,
+                value: p.value,
+                severity: p.severity,
+                problem: p.problem,
+                expected: p.expected,
+                say: describeProblem(p),
+              })),
+              hint: problems.length
+                ? 'Report these to the human in your own words. Do not correct them yourself unless they tell you what the right value is — you would be overwriting an answer they gave.'
+                : 'Every answered field looks well formed.',
+            }
           },
         ),
     },

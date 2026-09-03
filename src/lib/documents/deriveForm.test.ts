@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deriveFormFromText, looksLikeAForm, slugify } from './deriveForm'
+import { deriveFormFromText, looksLikeAForm, slugify, stripOfficeSection } from './deriveForm'
 
 const JOB_FORM = `
 MERIDIAN LABS — APPLICATION FORM
@@ -141,6 +141,23 @@ describe('a document that is a source, not a form', () => {
   })
 })
 
+describe('printed-form style, no colons', () => {
+  // Real PDF forms often print "Full name ________" with no colon at all.
+  it('reads a label followed by a write-on-this line', () => {
+    const derived = deriveFormFromText('Full name ____________\nNationality ____________\nDate of birth ……………')
+    const ids = derived.fields.map((f) => f.id)
+    expect(ids).toContain('fullName')
+    expect(ids).toContain('nationality')
+    expect(ids).toContain('dateOfBirth')
+    // All blanks — nothing counted as an answer.
+    expect(Object.keys(derived.answers)).toHaveLength(0)
+  })
+
+  it('does not mistake a divider line for a field', () => {
+    expect(deriveFormFromText('____________________').fields).toHaveLength(0)
+  })
+})
+
 describe('robustness', () => {
   it('returns nothing for prose', () => {
     const derived = deriveFormFromText(
@@ -164,7 +181,24 @@ describe('robustness', () => {
   })
 
   it('ignores page furniture', () => {
-    const derived = deriveFormFromText('Page 2\nFor office use only:\nInstructions: read carefully\nName: ___')
+    const derived = deriveFormFromText('Page 2\nInstructions: read carefully\nName: ___')
     expect(derived.fields.map((f) => f.id)).toEqual(['name'])
+  })
+
+  it('stops at the section the office fills in, not the applicant', () => {
+    const derived = deriveFormFromText('Name: ___\nFor office use only:\nVerified by: ___\nOutcome: ___')
+    expect(derived.fields.map((f) => f.id)).toEqual(['name'])
+  })
+})
+
+describe('stripOfficeSection', () => {
+  it('removes everything from the office heading onwards', () => {
+    const text = ['Name: ___', 'FOR OFFICE PURPOSE ONLY', 'Verified by: ___'].join('\n')
+    expect(stripOfficeSection(text)).toBe('Name: ___')
+  })
+
+  it('leaves a document with no such section untouched', () => {
+    const text = ['Name: ___', 'Email: ___'].join('\n')
+    expect(stripOfficeSection(text)).toBe(text)
   })
 })

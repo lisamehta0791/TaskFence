@@ -7,6 +7,7 @@ import { worldFor } from '../../lib/webmcp/guard'
 import { formToolNames } from '../../lib/webmcp/tools/form'
 import { Button } from '../ui/Button'
 import { springSoft } from '../../lib/motion/presets'
+import { checkRecordValues, type FormatProblem } from '../../lib/validation/format'
 
 /**
  * The record itself, with field-level trust badges.
@@ -59,6 +60,14 @@ export function ApplicationForm({ domain }: { domain: DomainSpec }) {
     return [...map.entries()]
   }, [fields])
 
+  // Answers that do not look like answers. Shown whether or not an agent has
+  // run: the check is deterministic, so the page can do it as you type.
+  const problems = useMemo(() => {
+    const out: Record<string, FormatProblem> = {}
+    for (const p of checkRecordValues(fields, values)) out[p.fieldId] = p
+    return out
+  }, [fields, values])
+
   const userDefined = Boolean(domain.form?.userDefined)
 
   return (
@@ -82,7 +91,7 @@ export function ApplicationForm({ domain }: { domain: DomainSpec }) {
         </AnimatePresence>
       </header>
 
-      {fields.length === 0 ? (
+      {fields.length === 0 && !submitted ? (
         <p className="appform__empty">{domain.form?.emptyHint}</p>
       ) : null}
 
@@ -148,6 +157,20 @@ export function ApplicationForm({ domain }: { domain: DomainSpec }) {
                   {f.help ? <p className="appfield__help">{f.help}</p> : null}
 
                   <AnimatePresence>
+                    {problems[f.id] ? (
+                      <motion.p
+                        className={`appfield__problem appfield__problem--${problems[f.id].severity}`}
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                      >
+                        {problems[f.id].severity === 'error' ? 'Does not look right' : 'Worth a check'} — this{' '}
+                        {problems[f.id].problem}. Expected {problems[f.id].expected}.
+                      </motion.p>
+                    ) : null}
+                  </AnimatePresence>
+
+                  <AnimatePresence>
                     {record?.writtenBy === 'agent' ? (
                       <motion.p
                         className="appfield__origin"
@@ -168,12 +191,17 @@ export function ApplicationForm({ domain }: { domain: DomainSpec }) {
       ))}
 
       {userDefined ? (
-        <FieldBuilder
-          existing={fields}
-          suggestions={suggestFields(documents)}
-          onAdd={addField}
-          disabled={submitted}
-        />
+        submitted ? (
+          // A submitted record is read-only by design — but a disabled button
+          // with no explanation reads as "broken", so say it outright.
+          <p className="appform__locked">
+            This record was submitted{reference ? ` (${reference})` : ''} and is now read-only — fields can no
+            longer be added or changed. Press <strong>Start over</strong> at the top of the page to begin a fresh
+            one.
+          </p>
+        ) : (
+          <FieldBuilder existing={fields} suggestions={suggestFields(documents)} onAdd={addField} />
+        )
       ) : null}
     </div>
   )

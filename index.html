@@ -12,7 +12,23 @@
     <meta property="og:title" content="TaskFence — Progressive Delegation for the Agentic Web" />
     <meta property="og:description" content="A WebMCP-native delegation layer: every agent tool call is checked, deterministically, against a live human-controlled contract." />
     <meta property="og:type" content="website" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <!--
+      Some scrapers insist on an absolute URL here. Once the Vercel domain
+      exists, change these two to https://<your-domain>/og-image.png.
+    -->
+    <meta property="og:image" content="/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="/og-image.png" />
+
+    <!--
+      The shield out of the TaskFence logo. The full lock-up — figures,
+      wordmark, tagline — is unreadable at 16px, so the tab gets the mark on
+      its own and the whole logo is served as /logo.png for anywhere with room.
+    -->
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png" />
+    <link rel="icon" href="/favicon-512.png" sizes="512x512" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

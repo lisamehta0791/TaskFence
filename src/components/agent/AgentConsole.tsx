@@ -67,7 +67,17 @@ export function AgentConsole({
         <div className="console__title">
           <span className={`console__status ${running ? 'is-running' : ''}`} aria-hidden="true" />
           <h3>{title}</h3>
-          <span className="console__mode">{live ? 'connected through WebMCP' : 'running in this page'}</span>
+          {/*
+            Honesty about what this panel is. The tools are real WebMCP tools
+            and the decisions are real, but the caller here is a scripted
+            walkthrough, not a language model — so it must not be labelled as
+            though a live agent were driving it.
+          */}
+          <span className="console__mode">
+            {live
+              ? 'scripted walkthrough · a real agent is also connected'
+              : 'scripted walkthrough · calling this page’s real WebMCP tools'}
+          </span>
         </div>
         <div className="console__controls">
           {running ? (
@@ -147,6 +157,12 @@ export function AgentConsole({
           Send
         </Button>
       </form>
+
+      <p className="console__disclosure">
+        This panel is a scripted walkthrough, not a language model — so the demo is the same every time. What it
+        calls is real: the same <code>navigator.modelContext</code> tools this page registers for any WebMCP agent,
+        and every decision you see comes from the policy engine, not from a script.
+      </p>
     </section>
   )
 }

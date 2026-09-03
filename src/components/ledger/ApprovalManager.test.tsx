@@ -94,7 +94,10 @@ describe('the approval prompt', () => {
     const call = attemptBlockedWrite()
     await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy())
 
-    const input = screen.getByDisplayValue('Northgate State University') as HTMLInputElement
+    // findBy*, not getBy*: the dialog animates in, so the input can mount a
+    // tick after the dialog itself does. Synchronously reaching for it made
+    // this test fail under parallel load.
+    const input = (await screen.findByDisplayValue('Northgate State University')) as HTMLInputElement
     act(() => {
       fireEvent.change(input, { target: { value: 'Northgate State Univ.' } })
     })

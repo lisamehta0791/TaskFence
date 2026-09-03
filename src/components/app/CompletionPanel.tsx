@@ -5,6 +5,7 @@ import type { DomainSpec } from '../../lib/domains/types'
 import { useTaskFenceStore } from '../../lib/store/taskfenceStore'
 import { useAgentConsole } from '../../lib/agent/console'
 import { springSoft } from '../../lib/motion/presets'
+import { checkRecordValues } from '../../lib/validation/format'
 
 /**
  * "How do I know it's finished, and what do I do now?"
@@ -45,6 +46,9 @@ export function CompletionPanel({
   const blocked = rows.filter((e) => e.status === 'denied' || e.status === 'refused-by-human').length
 
   const stillBlank = fields.filter((f) => f.required && !(values[f.id]?.value ?? '').trim())
+  // Answers that are present but do not look like answers. Worth saying out
+  // loud here: a form full of malformed values is not a finished form.
+  const problems = checkRecordValues(fields, values)
 
   return (
     <motion.section
@@ -62,13 +66,23 @@ export function CompletionPanel({
           <h2>{stopped ? 'You stopped the agent' : 'Your agent has finished'}</h2>
           <p className="muted">
             {submitted
-              ? `The application was submitted with your approval. Reference ${reference}.`
-              : stillBlank.length
+              ? `The record was submitted with your approval. Reference ${reference}.`
+              : fields.length === 0
+                ? 'This record has no fields, so there was nothing to fill. Upload the form you need filled in step 1, then run again.'
+                : stillBlank.length
                 ? `${stillBlank.length} required field${stillBlank.length === 1 ? '' : 's'} still need${stillBlank.length === 1 ? 's' : ''} filling in: ${stillBlank.map((f) => f.label).join(', ')}.`
                 : 'Everything required is filled in. Nothing has been submitted.'}
           </p>
         </div>
       </header>
+
+      {problems.length ? (
+        <p className="done__problems">
+          {problems.length} answer{problems.length === 1 ? '' : 's'} on this form do not look right —{' '}
+          {problems.map((p) => p.label).join(', ')}. They are marked below. Nothing was changed for you: they are
+          your answers to correct.
+        </p>
+      ) : null}
 
       <div className="done__counts">
         <motion.div className="done__count" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>

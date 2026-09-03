@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./public/logo.png" alt="TaskFence" width="180" />
+</p>
+
 # TaskFence
 
 **Progressive delegation for the agentic web.**
@@ -9,6 +13,17 @@ Submission for the **OpenAI WebMCP Challenge (Devpost, 2026)**.
 - **Demo video:** _add your YouTube link here_
 - **Licence:** MIT (see [LICENSE](./LICENSE))
 - **No login. No payments. All data on the site is fictional.**
+
+---
+
+## What it looks like
+
+|  |  |
+| --- | --- |
+| ![The TaskFence landing page](./public/screenshots/01-landing.png) | ![A form built from an uploaded PDF](./public/screenshots/02-your-form.png) |
+| **Give an agent the job, keep the say-so.** Real WebMCP tools behind rules you write in your own words. | **Upload the form you actually need filled.** TaskFence reads the fields out of your PDF, keeps the answers you had already typed into it as *yours*, and offers an AI reader for layouts a pattern rule cannot see. |
+| ![The approval prompt](./public/screenshots/03-approval.png) | ![The same engine governing a different site](./public/screenshots/04-another-site.png) |
+| **Stopped, not scolded.** The write has not happened yet. You get the reason, the exact grant being requested, and the agent's proposed value — editable before it lands. | **A different site, the same fence.** Other tools, other data, real money — and not one line of the policy engine changed to get here. |
 
 ---
 
@@ -86,7 +101,7 @@ changes **nothing** in the policy engine, the record, the ledger or the approval
 flow.
 
 That is not a claim you have to take on trust. A workspace is a config object;
-its record store and all seven of its WebMCP tools are generated from it by one
+its record store and all eight of its WebMCP tools are generated from it by one
 factory (`src/lib/webmcp/tools/form.ts`). `src/lib/domains/generality.test.ts`
 invents a workspace the application has never heard of — a clinic intake form —
 and asserts it gets working tools and reaches the same allow/deny/ask decisions
@@ -97,7 +112,7 @@ hand-written executors, so the fence is not secretly a form library either.
 
 ### The tools
 
-Each form workspace exposes seven, generated from its config:
+Each form workspace exposes eight, generated from its config:
 
 | Tool (scholarship names) | Operation | Notes |
 | --- | --- | --- |
@@ -108,21 +123,25 @@ Each form workspace exposes seven, generated from its config:
 | `uploadDocument` | UPLOAD | Attaches a document already on the page |
 | `updateApplication` | WRITE | Takes `field`, `value`, `source`, `documentId` |
 | `submitApplication` | SUBMIT | `destructiveHint: true`; always requires human approval |
+| `checkApplication` | READ | Reports answers that do not look valid — a malformed email, a date that is not a date, a printed blank left in. Reports only; never edits |
 
-The job workspace registers the same seven as `getJobApplication`,
+The job workspace registers the same eight as `getJobApplication`,
 `updateJobApplication` and so on; the blank one as `getRecord`, `updateRecord`.
 Names are per-workspace so nothing collides, and a test asserts that.
 
-Four TaskFence tools, which touch no application data:
+Five TaskFence tools, which touch no application data:
 
 | Tool | Purpose |
 | --- | --- |
+| `listWorkspaces` | Which workspaces this page offers, and which tools belong to each |
 | `getDelegation` | "What am I allowed to do here?" — call this first |
 | `proposeDelegationContract` | The agent turns the human's request into structured boundaries, for the human to accept |
 | `requestPermission` | Ask before overstepping, rather than triggering a block |
 | `explainLastDecision` | Get the plain-language reason to relay to the human |
 
 Plus the subscription workspace's seven hand-written tools, running on the **same** engine, ledger and approval flow — no policy code changed.
+
+That is **36 registered tools** in total, which is the number the header badge reports once an agent surface is detected.
 
 ### The enforcement point
 
@@ -158,12 +177,18 @@ Requires Node 18+.
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm test           # 146 tests: policy engine, enforcement path, generality, documents, UI flow
+npm test           # 272 tests: policy engine, enforcement path, generality, documents, UI flow
 npm run build      # production build into dist/
 npm run preview    # serve the production build
 ```
 
-Deploy `dist/` to any static host. Netlify (`netlify.toml`) and Vercel (`vercel.json`) configs are included with the SPA rewrite already set up. There is no backend, no database and no API key — which is deliberate: judges can open the URL and it just works.
+There is no database and no account system, and **no environment variable is required** — clone it, run it, and everything in this README works. `vercel.json` is included with the SPA rewrite already set up.
+
+`example-form.txt` in the repo root is a small sample form: drop it on the **Your own form** workspace to watch the fields get read out of a document, without needing a PDF of your own.
+
+### The one optional extra
+
+Setting `GROQ_API_KEY` (see [.env.example](./.env.example)) enables the AI-assisted document reader in [`api/understand.ts`](./api/understand.ts), for forms whose fields sit in table cells that a pattern rule cannot see. It is offered only *after* the built-in deterministic reader has run, it returns a proposal for a human to accept, and it has no involvement whatsoever in what an agent is permitted to do. Without the key, the site falls back to its own reader and nothing else changes.
 
 ## Connect a real agent
 
@@ -255,6 +280,3 @@ TaskFence doesn't reproduce any of these — it explores what happens when the s
 - **Prompt injection from page content.** A separate, well-studied problem; out of scope.
 - **Arbitrary malicious website code.** The site's own tool implementations are trusted to do what they say.
 - **A universal authorization standard.** This is a prototype exploring one interaction model, not a spec proposal.
-#   T a s k F e n c e  
- #   T a s k F e n c e  
- 

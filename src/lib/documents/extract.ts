@@ -72,6 +72,176 @@ async function loadPdfJs(): Promise<PdfModule> {
   return mod
 }
 
+/** The subset of a pdf.js text item this module actually reads. */
+export interface PdfTextItemLike {
+  str: string
+  hasEOL?: boolean
+  transform?: number[]
+  width?: number
+}
+
+/** The subset of a pdf.js annotation this module actually reads. */
+export interface PdfAnnotationLike {
+  subtype?: string
+  fieldValue?: unknown
+  contentsObj?: { str?: string }
+  contents?: string
+  rect?: number[]
+  hidden?: boolean
+}
+
+/**
+ * Two fragments this close together are one word that pdf.js happened to split
+ * ("Intern" + "ational"), so they are joined with no space.
+ */
+const NO_SPACE_GAP = 1.2
+
+/**
+ * A gap this wide is a column break, not a word space. Printed forms put two
+ * fields on one line all the time — "Nationality - ____   Passport Number - ____"
+ * — and the deriver has to be able to tell them apart. A tab marks the break;
+ * everything downstream treats a tab as "a new field may start here".
+ */
+const COLUMN_GAP = 18
+
+/**
+ * Rebuild real lines from pdf.js text items.
+ *
+ * pdf.js hands text back as positioned fragments, not lines. The old code
+ * joined a whole page into ONE line — which silently broke everything
+ * downstream, because both the form-deriver and the field-matcher read
+ * documents line by line and skip anything absurdly long. A three-page
+ * scholarship PDF produced three 200+-word "lines", every one of them
+ * discarded, and the user saw "no fields found" on a perfectly good form.
+ *
+ * A new line starts when pdf.js says so (`hasEOL`) or when the fragment's
+ * vertical position moves — two fragments on the same printed line share
+ * (almost exactly) one Y coordinate.
+ */
+export function linesFromTextItems(items: PdfTextItemLike[]): string[] {
+  const lines: string[] = []
+  let current = ''
+  let lastY: number | null = null
+  let lastRight: number | null = null
+
+  const flush = () => {
+    const line = current.replace(/[ ]{2,}/g, ' ').replace(/\t[ \t]+/g, '\t').trim()
+    if (line.replace(/\t/g, '').trim()) lines.push(line)
+    current = ''
+    lastRight = null
+  }
+
+  for (const item of items) {
+    const x = Array.isArray(item.transform) ? item.transform[4] : undefined
+    const y = Array.isArray(item.transform) ? item.transform[5] : undefined
+
+    if (typeof y === 'number' && lastY !== null && Math.abs(y - lastY) > 3) flush()
+
+    if (item.str) {
+      // How far this fragment sits from the end of the previous one decides
+      // whether it continues a word, starts a new one, or begins a new column.
+      const gap = typeof x === 'number' && lastRight !== null ? x - lastRight : null
+      if (current) {
+        if (gap === null) current += ' '
+        else if (gap >= COLUMN_GAP) current += '\t'
+        else if (gap > NO_SPACE_GAP) current += ' '
+      }
+      current += item.str
+    }
+
+    if (typeof y === 'number') lastY = y
+    // Without a width there is no way to know where this fragment ends, so the
+    // next gap is unmeasurable and the next join falls back to a plain space.
+    lastRight = typeof x === 'number' && typeof item.width === 'number' ? x + item.width : null
+    if (item.hasEOL) flush()
+  }
+  flush()
+
+  return lines
+}
+
+/* ------------------------------------------------------------------ *
+ * Values typed into the PDF itself
+ * ------------------------------------------------------------------ */
+
+function annotationValue(a: PdfAnnotationLike): string {
+  if (a.hidden) return ''
+  const raw = Array.isArray(a.fieldValue) ? a.fieldValue.join(', ') : a.fieldValue
+  const text = typeof raw === 'string' && raw.trim() ? raw : (a.contentsObj?.str ?? a.contents ?? '')
+  return typeof text === 'string' ? text.replace(/\s+/g, ' ').trim() : ''
+}
+
+/**
+ * Read the answers someone typed into the PDF.
+ *
+ * This is the bug that made TaskFence look broken on a real form: a filled-in
+ * PDF keeps its answers in form-field *annotations*, not in the page's text
+ * layer. `getTextContent()` returns the blank template and nothing else — so a
+ * form the human had half-completed arrived here looking entirely empty, and
+ * every field they had already answered was offered up as "blank, agent may
+ * fill it". The values were on the screen; we simply were not looking where
+ * they live.
+ *
+ * Each annotation becomes a text fragment positioned at its box, so it lands on
+ * the printed line it belongs to and reads in the right order.
+ */
+export function annotationTextItems(
+  annotations: PdfAnnotationLike[],
+  textItems: PdfTextItemLike[],
+): PdfTextItemLike[] {
+  const baselines = textItems
+    .map((i) => (Array.isArray(i.transform) ? i.transform[5] : undefined))
+    .filter((y): y is number => typeof y === 'number')
+
+  const out: PdfTextItemLike[] = []
+  for (const a of annotations) {
+    const value = annotationValue(a)
+    if (!value || !Array.isArray(a.rect) || a.rect.length < 4) continue
+
+    const [x1, y1, x2, y2] = a.rect
+    // A widget's box is taller than the text in it, so snap to the nearest
+    // printed baseline — otherwise the value lands on a line of its own.
+    const mid = (y1 + y2) / 2
+    let y = y1
+    let best = Infinity
+    for (const b of baselines) {
+      const d = Math.abs(b - mid)
+      if (d < best) {
+        best = d
+        y = b
+      }
+    }
+    if (best > 12) y = mid
+
+    out.push({ str: value, transform: [1, 0, 0, 1, x1, y], width: Math.max(0, x2 - x1) })
+  }
+  return out
+}
+
+/**
+ * Text fragments and typed-in answers, in reading order.
+ *
+ * `hasEOL` is dropped once annotations are in play: it marks the end of the
+ * *text* run, and an answer sitting to the right of it would otherwise be
+ * pushed onto its own line.
+ */
+export function mergePageItems(
+  textItems: PdfTextItemLike[],
+  annotations: PdfAnnotationLike[],
+): PdfTextItemLike[] {
+  const extra = annotationTextItems(annotations, textItems)
+  if (!extra.length) return textItems
+
+  return [...textItems.map((i) => ({ ...i, hasEOL: false })), ...extra].sort((a, b) => {
+    const ay = Array.isArray(a.transform) ? a.transform[5] : 0
+    const by = Array.isArray(b.transform) ? b.transform[5] : 0
+    if (Math.abs(ay - by) > 3) return by - ay
+    const ax = Array.isArray(a.transform) ? a.transform[4] : 0
+    const bx = Array.isArray(b.transform) ? b.transform[4] : 0
+    return ax - bx
+  })
+}
+
 async function extractPdf(file: File): Promise<ExtractResult> {
   try {
     const lib = await loadPdfJs()
@@ -83,12 +253,11 @@ async function extractPdf(file: File): Promise<ExtractResult> {
     for (let i = 1; i <= maxPages; i += 1) {
       const page = await doc.getPage(i)
       const content = await page.getTextContent()
-      const line = content.items
-        .map((item) => ('str' in item ? item.str : ''))
-        .join(' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-      if (line) parts.push(line)
+      const items = content.items.filter((it) => 'str' in it) as unknown as PdfTextItemLike[]
+      // Answers typed into the PDF live in annotations, not in the text layer.
+      const annotations = (await page.getAnnotations().catch(() => [])) as unknown as PdfAnnotationLike[]
+      const pageLines = linesFromTextItems(mergePageItems(items, annotations))
+      if (pageLines.length) parts.push(pageLines.join('\n'))
     }
 
     const text = parts.join('\n\n').trim()
@@ -112,43 +281,14 @@ async function extractPdf(file: File): Promise<ExtractResult> {
   }
 }
 
-/* ------------------------------------------------------------------ *
- * Field guessing
- *
- * A small, deterministic pass that spots values an agent would otherwise have
- * to hunt for. It is a convenience for the UI summary only — the agent gets the
- * full text either way and does its own reading.
- * ------------------------------------------------------------------ */
-
-const PATTERNS: Array<{ field: string; re: RegExp }> = [
-  { field: 'fullName', re: /(?:name|student|applicant)\s*[:\-]\s*([A-Z][A-Za-z'’.\- ]{2,48})/i },
-  { field: 'email', re: /([\w.+-]+@[\w-]+\.[\w.]{2,})/ },
-  { field: 'dateOfBirth', re: /(?:date of birth|d\.?o\.?b\.?|born)\s*[:\-]?\s*([\d]{1,4}[\/\-.][\d]{1,2}[\/\-.][\d]{2,4})/i },
-  {
-    field: 'previousUniversity',
-    re: /(?:institution|university|college|school)\s*[:\-]\s*([A-Z][A-Za-z'’.\- ]{3,60})/i,
-  },
-  { field: 'degreeProgram', re: /(?:programme|program|course|degree|major)\s*[:\-]\s*([A-Za-z'’.\- ]{3,60})/i },
-  { field: 'gpa', re: /(?:gpa|grade average|cgpa|average)\s*[:\-]?\s*([\d.]{1,4}\s*(?:\/\s*[\d.]{1,4})?)/i },
-  { field: 'expectedGraduation', re: /(?:graduat\w*)\s*[:\-]?\s*((?:[A-Z][a-z]+\s+)?\d{4})/i },
-  {
-    field: 'familyIncome',
-    re: /(?:household income|family income|annual income|total income)\s*[:\-]?\s*[^\d]{0,3}([\d,]{3,12})/i,
-  },
-  { field: 'dependents', re: /(?:dependents|household size|people in household)\s*[:\-]?\s*(\d{1,2})/i },
-  { field: 'fundingGap', re: /(?:funding (?:gap|needed|required)|shortfall)\s*[:\-]?\s*[^\d]{0,3}([\d,]{3,12})/i },
-]
-
-/** Best-effort field/value pairs found in the text. Never guesses beyond a match. */
-export function guessFields(text: string): Record<string, string> {
-  const out: Record<string, string> = {}
-  if (!text) return out
-  for (const { field, re } of PATTERNS) {
-    const m = text.match(re)
-    if (m?.[1]) out[field] = m[1].trim().replace(/\s+/g, ' ')
-  }
-  return out
-}
+/**
+ * Matching an extracted document against a form's actual fields lives in
+ * `matchFields.ts` — generic across every workspace, not tied to one domain's
+ * vocabulary. There used to be a fixed regex list here (`guessFields`) keyed to
+ * scholarship-shaped words like "GPA" and "household income", which is exactly
+ * the kind of hardcoding that made document matching fail silently on any other
+ * kind of form.
+ */
 
 export function summarise(file: File, result: ExtractResult): string {
   if (!result.readable) return result.note ?? 'Could not be read.'

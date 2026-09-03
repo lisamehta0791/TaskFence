@@ -104,6 +104,16 @@ const NO_DELETE = /(don'?t|do not|never)\s+(delete|remove|cancel|unsubscribe|ter
  * It grants WRITE only. Deletes and anything irreversible still sit behind
  * their own DENY / ASK rules, which outrank an ALLOW.
  */
+/**
+ * "Tell me if anything looks wrong / does not match the standard format."
+ *
+ * A reporting instruction, not a permission: it grants the check tool and
+ * nothing else. The agent may say an answer looks malformed; correcting it is
+ * still a write, and still goes to whatever rule governs writes.
+ */
+const CHECK_FORMAT =
+  /(check|say|tell me|flag|verify|validate|point out|let me know|report)[^.;]*\b(wrong|incorrect|invalid|mismatch\w*|not match\w*|doesn'?t match|format|standard|valid)/i
+
 const EXPLICIT_ACTION =
   /\b(downgrade|upgrade|pause|resume|reduce|switch|move|adjust|trim|rename|reschedule|clean\s?up|tidy)\b/i
 
@@ -161,6 +171,19 @@ function patterns(): ClausePattern[] {
           match: { tools: domain.uploadTools, operations: ['UPLOAD'] },
           label: 'Attach your documents',
           reason: 'Attaching the documents you provided is part of the task you delegated.',
+        },
+      ],
+    },
+    {
+      id: 'check-format',
+      test: CHECK_FORMAT,
+      understood: 'The agent must tell you about any answer that does not look like a valid value.',
+      build: (domain) => [
+        {
+          effect: 'ALLOW',
+          match: { tools: domain.readTools, operations: ['READ'] },
+          label: 'Check your answers and report what looks wrong',
+          reason: 'You asked to be told about fields that do not match the expected format.',
         },
       ],
     },

@@ -9,6 +9,8 @@
 import { useRecordStore } from '../domains'
 import { formToolNames } from '../webmcp/tools/form'
 import type { DomainSpec } from '../domains/types'
+import { buildRequest, decide, useTaskFenceStore } from '../store/taskfenceStore'
+import { worldFor } from '../webmcp/guard'
 import { useSubscriptionStore } from '../store/subscriptionStore'
 import type { ScenarioStep } from './console'
 
@@ -32,6 +34,32 @@ export function formScenario(domain: DomainSpec): ScenarioStep[] {
 
   const readable = documents.filter((d) => d.readable)
   const unreadable = documents.filter((d) => !d.readable)
+
+  // A record with no fields has no work in it. Say so instead of "finishing"
+  // a task that never existed — and certainly instead of submitting nothing.
+  if (fields.length === 0) {
+    return [
+      {
+        say: 'First, let me check what you have actually delegated to me on this page.',
+        call: { name: 'getDelegation', input: { workspace: domain.id } },
+        waitMs: 300,
+      },
+      { call: { name: n.get }, waitMs: 400 },
+      {
+        say: `This ${noun} has no fields yet, so there is nothing for me to fill. Upload the form you need filled — or add the fields yourself — and run me again.`,
+        waitMs: 400,
+      },
+    ]
+  }
+
+  // A cooperative agent does not attempt what the delegation flatly forbids.
+  // The fence would stop it anyway — this is manners, not enforcement.
+  const submitDenied = (() => {
+    const contract = useTaskFenceStore.getState().contractFor(domain.id)
+    if (!contract) return false
+    const req = buildRequest({ domain, tool: n.submit, args: {}, intent: `Submit the ${noun}` })
+    return decide(domain, req, worldFor(domain)).decision === 'DENY'
+  })()
 
   // What the documents can actually supply, and where it should go.
   const supplied: Array<{ field: string; value: string; documentId: string }> = []
@@ -69,7 +97,9 @@ export function formScenario(domain: DomainSpec): ScenarioStep[] {
       say: `Reading the ${noun} and the requirements.`,
       call: { name: n.get },
       report: (r) => {
-        const blanks = (r?.data?.fields ?? []).filter((f: any) => f.status === 'blank')
+        const all = r?.data?.fields ?? []
+        if (!all.length) return `This ${noun} has no fields yet.`
+        const blanks = all.filter((f: any) => f.status === 'blank')
         return blanks.length
           ? `${blanks.length} fields are still blank: ${blanks.map((f: any) => f.label).join(', ')}.`
           : 'Every field already has an answer.'
@@ -77,6 +107,18 @@ export function formScenario(domain: DomainSpec): ScenarioStep[] {
       waitMs: PACE,
     },
     { call: { name: n.requirements }, waitMs: PACE },
+    {
+      say: 'Before I fill anything in, let me check the answers that are already here.',
+      call: { name: n.check },
+      report: (r) => {
+        const problems = r?.data?.problems ?? []
+        if (!problems.length) return 'Every answer already on the form looks well formed.'
+        return `${problems.length} answer${problems.length === 1 ? '' : 's'} do not look right: ${problems
+          .map((p: any) => p.say)
+          .join(' ')} I have not changed any of them — they are your answers.`
+      },
+      waitMs: PACE,
+    },
     {
       say: readable.length
         ? `Now your documents — ${readable.length} I can read.`
@@ -153,13 +195,20 @@ export function formScenario(domain: DomainSpec): ScenarioStep[] {
     })
   }
 
-  steps.push({
-    say: `That is everything I can complete. Submitting the ${noun} is final, so it is yours to approve.`,
-    call: { name: n.submit, input: { confirm: true } },
-    report: (r) => (r?.ok ? `Submitted. Your reference is ${r.data.reference}.` : undefined),
-    waitMs: 700,
-    when: () => !store.getState().submitted,
-  })
+  if (submitDenied) {
+    steps.push({
+      say: `You ruled out submitting this ${noun}, so I am stopping here. Everything I could do inside your rules is done.`,
+      waitMs: 500,
+    })
+  } else {
+    steps.push({
+      say: `That is everything I can complete. Submitting the ${noun} is final, so it is yours to approve.`,
+      call: { name: n.submit, input: { confirm: true } },
+      report: (r) => (r?.ok ? `Submitted. Your reference is ${r.data.reference}.` : undefined),
+      waitMs: 700,
+      when: () => !store.getState().submitted,
+    })
+  }
 
   steps.push({
     say: 'Task finished. Everything I did, and everything I was stopped from doing, is in the ledger on the right.',

@@ -10,6 +10,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { callTool, registerTools } from './adapter'
 import { allTools } from './index'
 import { scholarshipDomain } from '../domains/scholarship'
+import { customDomain, useRecordStore } from '../domains'
 import { useApplicationStore } from '../store/applicationStore'
 import { useTaskFenceStore } from '../store/taskfenceStore'
 
@@ -95,12 +96,15 @@ describe('the enforcement path', () => {
     expect(((await again) as any).ok).toBe(false)
 
     // --- submission is irreversible, so it always asks ------------------
-    for (const [field, value] of [
-      ['expectedGraduation', 'June 2027'],
-      ['familyIncome', '31,400'],
-      ['dependents', '5'],
+    // Each value is attributed to the document it is actually in: the site
+    // verifies that claim, so "June 2027" cannot be credited to the income
+    // statement. See provenance.ts.
+    for (const [field, value, documentId] of [
+      ['expectedGraduation', 'June 2027', 'doc_transcript'],
+      ['familyIncome', '31,400', 'doc_income'],
+      ['dependents', '5', 'doc_income'],
     ] as const) {
-      await callTool('updateApplication', { field, value, source: 'document', documentId: 'doc_income' })
+      await callTool('updateApplication', { field, value, source: 'document', documentId })
     }
     const gap = callTool('updateApplication', { field: 'fundingGap', value: '4,500', source: 'inference' })
     await respond({ approved: true, scope: 'exact', uses: 1 })
@@ -132,6 +136,7 @@ describe('the enforcement path', () => {
   it('lets a cooperative agent ask permission up front', async () => {
     useTaskFenceStore.getState().startDelegation(STATEMENT, scholarshipDomain)
     const ask = callTool('requestPermission', {
+      workspace: 'scholarship',
       tool: 'updateApplication',
       field: 'previousUniversity',
       reason: 'Your transcript disagrees with the form.',
@@ -146,6 +151,41 @@ describe('the enforcement path', () => {
       source: 'document',
     })
     expect(write.ok).toBe(true)
+  })
+
+  it('refuses to submit a record with no fields, even with human approval', async () => {
+    // The blank workspace starts with zero fields. Zero required fields used to
+    // pass the "anything missing?" check vacuously — an empty record could be
+    // "submitted", locking the page read-only with nothing in it.
+    useRecordStore('custom').getState().reset()
+    useTaskFenceStore.getState().startDelegation('Fill in my record. Ask before you submit.', customDomain)
+
+    const submit = callTool('submitRecord', { confirm: true })
+    await respond({ approved: true, scope: 'exact', uses: 1 })
+    const result: any = await submit
+    expect(result.ok).toBe(false)
+    expect(result.message).toMatch(/no fields/i)
+    expect(useRecordStore('custom').getState().submitted).toBe(false)
+  })
+
+  it('reports malformed answers without touching them', async () => {
+    useApplicationStore.getState().reset()
+    useTaskFenceStore
+      .getState()
+      .startDelegation(`${STATEMENT} Also tell me if any field does not match the standard format.`, scholarshipDomain)
+
+    // An answer the human typed themselves, which is not a valid email.
+    useApplicationStore.getState().setValue('email', 'lisamehts', 'human')
+
+    const result: any = await callTool('checkApplication', {})
+    expect(result.ok).toBe(true)
+    const emailProblem = result.data.problems.find((p: any) => p.field === 'email')
+    expect(emailProblem.severity).toBe('error')
+    expect(emailProblem.say).toMatch(/not a valid email/i)
+
+    // Reporting is not editing: the human's answer is exactly as they left it.
+    expect(useApplicationStore.getState().values.email.value).toBe('lisamehts')
+    expect(useApplicationStore.getState().values.email.writtenBy).toBe('human')
   })
 
   it('keeps one agent’s exception invisible to another agent', async () => {

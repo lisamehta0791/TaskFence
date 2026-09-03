@@ -9,31 +9,51 @@
  * the worst an agent can do with them is ask the human a question.
  */
 
-import { scholarshipDomain } from '../../domains/scholarship'
-import { subscriptionsDomain } from '../../domains/subscriptions'
+import { ALL_DOMAINS, DEFAULT_DOMAIN_ID, domainById } from '../../domains'
 import type { DomainSpec } from '../../domains/types'
 import { contractSummary, describeMatcher } from '../../policy/contract'
 import type { ProposedContract } from '../../policy/compiler'
 import { buildRequest, useTaskFenceStore } from '../../store/taskfenceStore'
 import type { WebMCPTool } from '../adapter'
 
-const DOMAINS: Record<string, DomainSpec> = {
-  scholarship: scholarshipDomain,
-  subscriptions: subscriptionsDomain,
-}
-
+/**
+ * Resolved against the live domain registry — not a fixed list. Every
+ * workspace this site actually has is a valid `workspace` value; there used to
+ * be a hardcoded two-entry map here that silently fell back to the scholarship
+ * domain for anything else, which meant `getDelegation` on the job or custom
+ * workspace was quietly answering questions about the wrong workspace's rules.
+ */
 function resolveDomain(input: Record<string, unknown>): DomainSpec {
-  const id = String(input.workspace ?? input.domain ?? 'scholarship')
-  return DOMAINS[id] ?? scholarshipDomain
+  const id = String(input.workspace ?? input.domain ?? DEFAULT_DOMAIN_ID)
+  return domainById(id) ?? domainById(DEFAULT_DOMAIN_ID)!
 }
 
 const workspaceProp = {
   type: 'string',
-  enum: ['scholarship', 'subscriptions'],
-  description: 'Which workspace on this site you are working in. Defaults to "scholarship".',
+  enum: ALL_DOMAINS.map((d) => d.id),
+  description:
+    'Which workspace on this site you are working in — call getTools or listWorkspaces to see the current list. Defaults to the workspace open on screen.',
 }
 
 export const metaTools: WebMCPTool[] = [
+  {
+    name: 'listWorkspaces',
+    description:
+      'List every workspace this site currently has, with its title and the WebMCP tools it registers. Call this before getDelegation if you are not sure which workspace id to use.',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    annotations: { readOnlyHint: true },
+    execute: () => ({
+      ok: true,
+      data: {
+        workspaces: ALL_DOMAINS.map((d) => ({
+          workspace: d.id,
+          title: d.taskTitle,
+          tools: d.allTools,
+        })),
+      },
+    }),
+  },
+
   {
     name: 'getDelegation',
     description:
@@ -53,6 +73,7 @@ export const metaTools: WebMCPTool[] = [
         return {
           ok: true,
           data: {
+            workspace: domain.id,
             active: false,
             message:
               'No delegation is active for this task. Nothing is authorised yet. Ask the human what they want done and what their boundaries are, then call proposeDelegationContract.',
@@ -64,6 +85,7 @@ export const metaTools: WebMCPTool[] = [
       return {
         ok: true,
         data: {
+          workspace: domain.id,
           active: contract.status === 'active',
           status: contract.status,
           task: contract.title,
@@ -130,6 +152,7 @@ export const metaTools: WebMCPTool[] = [
       return {
         ok: true,
         data: {
+          workspace: domain.id,
           status: 'awaiting-human',
           proposed: draft.contract.rules.map((r) => ({ effect: r.effect, label: r.label })),
           dropped: draft.dropped ?? [],
@@ -169,7 +192,7 @@ export const metaTools: WebMCPTool[] = [
         return {
           ok: false,
           error: 'UNKNOWN_TOOL',
-          message: `"${tool}" is not a tool on this site. Call getTools first.`,
+          message: `"${tool}" is not a tool on the "${domain.id}" workspace. Call listWorkspaces or getDelegation first.`,
         }
       }
 

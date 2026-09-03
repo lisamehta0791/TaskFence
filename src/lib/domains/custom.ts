@@ -18,7 +18,7 @@ export const customDomain: DomainSpec = {
   subject: 'record',
   blurb: 'Upload the form you actually need filled. TaskFence reads the blanks out of it.',
 
-  readTools: ['getRecord', 'getRecordRequirements', 'listRecordDocuments', 'readRecordDocument'],
+  readTools: ['getRecord', 'getRecordRequirements', 'listRecordDocuments', 'readRecordDocument', 'checkRecord'],
   writeTools: ['updateRecord'],
   uploadTools: ['attachRecordDocument'],
   submitTools: ['submitRecord'],
@@ -31,6 +31,7 @@ export const customDomain: DomainSpec = {
     'attachRecordDocument',
     'updateRecord',
     'submitRecord',
+    'checkRecord',
   ],
   irreversibleTools: ['submitRecord'],
   operationOf: {
@@ -41,6 +42,7 @@ export const customDomain: DomainSpec = {
     attachRecordDocument: 'UPLOAD',
     updateRecord: 'WRITE',
     submitRecord: 'SUBMIT',
+    checkRecord: 'READ',
   },
 
   // Nothing to begin with — the point of this workspace.

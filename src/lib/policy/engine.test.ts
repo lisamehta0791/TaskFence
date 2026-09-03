@@ -222,3 +222,31 @@ describe('read-only delegations', () => {
     ).toBe('ALLOW')
   })
 })
+
+describe('asking to be told what looks wrong', () => {
+  // The user's own sentence, verbatim. The last clause used to compile to
+  // nothing at all: the "here is what that means in practice" list never
+  // mentioned checking, and no tool existed to do any checking with.
+  const WITH_CHECK = `${STATEMENT} Also say if any field Are wrong and not matching proper standard format`
+
+  it('is understood as an instruction rather than dropped', () => {
+    const { understood } = compileFromText(WITH_CHECK, CTX)
+    expect(understood.join(' ')).toMatch(/does not look like a valid value/i)
+  })
+
+  it('does not quietly become permission to change an answer you gave', () => {
+    const { contract } = compileFromText(WITH_CHECK, CTX)
+    const decision = evaluate(contract, req({ field: 'previousUniversity', source: 'document' }), world)
+    expect(decision.decision).toBe('DENY')
+  })
+
+  it('leaves reading — which is how the checking happens — allowed', () => {
+    const { contract } = compileFromText(WITH_CHECK, CTX)
+    const decision = evaluate(
+      contract,
+      req({ tool: 'checkApplication', operation: 'READ', field: undefined }),
+      world,
+    )
+    expect(decision.decision).toBe('ALLOW')
+  })
+})

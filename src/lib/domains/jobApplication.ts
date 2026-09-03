@@ -17,7 +17,7 @@ export const jobApplicationDomain: DomainSpec = {
   subject: 'application',
   blurb: 'A role you are applying for, with a CV to fill it from and salary you set yourself.',
 
-  readTools: ['getJobApplication', 'getJobRequirements', 'listJobDocuments', 'readJobDocument'],
+  readTools: ['getJobApplication', 'getJobRequirements', 'listJobDocuments', 'readJobDocument', 'checkJobApplication'],
   writeTools: ['updateJobApplication'],
   uploadTools: ['attachJobDocument'],
   submitTools: ['submitJobApplication'],
@@ -30,6 +30,7 @@ export const jobApplicationDomain: DomainSpec = {
     'attachJobDocument',
     'updateJobApplication',
     'submitJobApplication',
+    'checkJobApplication',
   ],
   irreversibleTools: ['submitJobApplication'],
   operationOf: {
@@ -40,6 +41,7 @@ export const jobApplicationDomain: DomainSpec = {
     attachJobDocument: 'UPLOAD',
     updateJobApplication: 'WRITE',
     submitJobApplication: 'SUBMIT',
+    checkJobApplication: 'READ',
   },
 
   fields: [

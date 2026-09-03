@@ -17,7 +17,7 @@ export const scholarshipDomain: DomainSpec = {
   subject: 'application',
   blurb: 'A part-filled application, your documents, and answers you do not want touched.',
 
-  readTools: ['getApplication', 'getRequirements', 'listDocuments', 'readDocument'],
+  readTools: ['getApplication', 'getRequirements', 'listDocuments', 'readDocument', 'checkApplication'],
   writeTools: ['updateApplication'],
   uploadTools: ['uploadDocument'],
   submitTools: ['submitApplication'],
@@ -31,6 +31,7 @@ export const scholarshipDomain: DomainSpec = {
     'uploadDocument',
     'updateApplication',
     'submitApplication',
+    'checkApplication',
   ],
   irreversibleTools: ['submitApplication'],
   operationOf: {
@@ -41,6 +42,7 @@ export const scholarshipDomain: DomainSpec = {
     uploadDocument: 'UPLOAD',
     updateApplication: 'WRITE',
     submitApplication: 'SUBMIT',
+    checkApplication: 'READ',
   },
 
   fields: [

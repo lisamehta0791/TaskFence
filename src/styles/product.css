@@ -2180,3 +2180,144 @@
   color: var(--text);
   line-height: 1.55;
 }
+
+/* What the document actually matched, before anything is written. */
+.docs__proposal {
+  margin-bottom: var(--sp-4);
+  border: 1px solid var(--brass-line);
+  border-radius: var(--r-2);
+  background: var(--shell-2);
+  overflow: hidden;
+}
+.docs__proposal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-3);
+  background: var(--brass-wash);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+.docs__proposal-list {
+  list-style: none;
+  display: grid;
+}
+.docs__proposal-list li {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-top: 1px solid var(--line);
+  font-size: 0.82rem;
+}
+.docs__proposal-check {
+  color: var(--allow);
+  font-family: var(--font-mono);
+}
+.docs__proposal-list li.is-existing .docs__proposal-check {
+  color: var(--ask);
+}
+.docs__proposal-label {
+  color: var(--text);
+  font-weight: 500;
+}
+.docs__proposal-arrow {
+  color: var(--text-4);
+}
+.docs__proposal-value {
+  color: var(--brass);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+.docs__proposal-note {
+  flex-basis: 100%;
+  font-size: 0.72rem;
+  color: var(--ask);
+}
+.docs__proposal-foot {
+  padding: var(--sp-3);
+  border-top: 1px solid var(--line);
+  font-size: 0.74rem;
+}
+
+/* A submitted record explains its own read-only state. */
+.appform__locked {
+  margin-top: var(--sp-5);
+  padding: var(--sp-4);
+  border-left: 2px solid var(--allow);
+  background: var(--allow-wash);
+  font-size: 0.84rem;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+/* An answer that does not look like an answer. */
+.appfield__problem {
+  margin-top: var(--sp-2);
+  font-size: 0.74rem;
+  line-height: 1.5;
+  overflow: hidden;
+}
+.appfield__problem--error { color: var(--deny); }
+.appfield__problem--warning { color: var(--ask); }
+
+/* "Some of these answers do not look right." */
+.done__problems {
+  margin-top: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  border-left: 2px solid var(--ask);
+  background: var(--ask-wash);
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+/* What the built-in agent panel actually is. */
+.console__disclosure {
+  padding: var(--sp-3) var(--sp-4);
+  border-top: 1px solid var(--line);
+  font-size: 0.72rem;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+.console__disclosure code {
+  font-size: 0.95em;
+  color: var(--brass);
+}
+
+/* The optional second reader. */
+.docs__ai {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-4);
+  margin-top: var(--sp-4);
+  padding: var(--sp-4);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--brass);
+  background: rgba(224, 168, 92, 0.04);
+  overflow: hidden;
+}
+.docs__ai-copy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  font-size: 0.78rem;
+  line-height: 1.6;
+  flex: 1;
+}
+.docs__ai-privacy {
+  font-size: 0.72rem;
+  color: var(--ask);
+}
+.docs__proposal-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-top: 1px solid var(--line);
+  font-size: 0.72rem;
+  flex-wrap: wrap;
+}
