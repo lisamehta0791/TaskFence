@@ -9,7 +9,7 @@ A WebMCP-native, human-controlled delegation layer that lets a person hand a mul
 
 Submission for the **OpenAI WebMCP Challenge (Devpost, 2026)**.
 
-- **Live demo:** _add your deployed URL here_
+- **Live demo:** https://task-fence.vercel.app/
 - **Demo video:** https://youtu.be/oV9zTIsEkIk?si=vAZszYQArMiD0NU8
 - **Licence:** MIT (see [LICENSE](./LICENSE))
 - **No login. No payments. All data on the site is fictional.**
