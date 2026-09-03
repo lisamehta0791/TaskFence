@@ -1,0 +1,351 @@
+/* ==========================================================================
+   TaskFence design system — obsidian & brass
+
+   The product is an aperture: a boundary that opens exactly as far as the work
+   needs. So the whole interface is built like an optical instrument — a black
+   anodised body, machined edges, warm brass for the one thing that moves.
+
+   No blue-violet gradients, no glassmorphism, no glowing orbs.
+   ========================================================================== */
+
+:root {
+  /* ---- Body ------------------------------------------------------------- */
+  --void: #08080a; /* page */
+  --shell: #0e0f12; /* panels */
+  --shell-2: #141519; /* raised panels */
+  --shell-3: #1b1c21; /* inputs, wells */
+  --shell-4: #24252c; /* hover states */
+
+  /* ---- Machined edges --------------------------------------------------- */
+  --line: rgba(255, 255, 255, 0.075);
+  --line-2: rgba(255, 255, 255, 0.15);
+  --line-3: rgba(255, 255, 255, 0.26);
+  /* The 1px top highlight that makes a dark panel read as a solid object. */
+  --bevel: inset 0 1px 0 rgba(255, 255, 255, 0.055);
+
+  /* ---- Type ------------------------------------------------------------- */
+  --text: #f4f2ee; /* warm white, never pure #fff */
+  --text-2: #a7a49c;
+  --text-3: #6f6d66;
+  --text-4: #4b4a45;
+
+  /* ---- Brass — the only decorative colour in the system ------------------ */
+  --brass: #e0a85c;
+  --brass-hi: #f4cf95;
+  --brass-lo: #a97b38;
+  --brass-wash: rgba(224, 168, 92, 0.12);
+  --brass-line: rgba(224, 168, 92, 0.38);
+
+  /* ---- The three states ------------------------------------------------- */
+  --allow: #5fd39a;
+  --allow-wash: rgba(95, 211, 154, 0.11);
+  --allow-line: rgba(95, 211, 154, 0.34);
+  --ask: #e0a85c;
+  --ask-wash: rgba(224, 168, 92, 0.12);
+  --ask-line: rgba(224, 168, 92, 0.38);
+  --deny: #ff6f6f;
+  --deny-wash: rgba(255, 111, 111, 0.11);
+  --deny-line: rgba(255, 111, 111, 0.34);
+
+  /* ---- Depth ------------------------------------------------------------ */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-2: 0 14px 34px -18px rgba(0, 0, 0, 0.9);
+  --shadow-3: 0 40px 90px -30px rgba(0, 0, 0, 0.95);
+  --glow-brass: 0 0 0 1px rgba(224, 168, 92, 0.45), 0 10px 34px -12px rgba(224, 168, 92, 0.45);
+
+  /* ---- Fonts ------------------------------------------------------------ */
+  --font-display: 'Instrument Serif', 'Iowan Old Style', Georgia, serif;
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --step--2: 0.71rem;
+  --step--1: clamp(0.78rem, 0.76rem + 0.08vw, 0.83rem);
+  --step-0: clamp(0.93rem, 0.9rem + 0.12vw, 1rem);
+  --step-1: clamp(1.09rem, 1.02rem + 0.32vw, 1.28rem);
+  --step-2: clamp(1.33rem, 1.16rem + 0.75vw, 1.75rem);
+  --step-3: clamp(1.75rem, 1.4rem + 1.6vw, 2.7rem);
+  --step-4: clamp(2rem, 1.6rem + 1.9vw, 3rem);
+  --step-5: clamp(2.4rem, 1.9rem + 2.4vw, 4.1rem);
+
+  /* ---- Rhythm ----------------------------------------------------------- */
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.5rem;
+  --sp-6: 2rem;
+  --sp-7: 3rem;
+  --sp-8: 4.5rem;
+  --sp-9: 7rem;
+
+  --r-1: 3px;
+  --r-2: 6px;
+  --r-3: 10px;
+  --r-4: 16px;
+  --r-pill: 999px;
+
+  --nav-h: 66px;
+  --maxw: 1200px;
+  --maxw-text: 68ch;
+
+  color-scheme: dark;
+}
+
+/* ---- Reset -------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: var(--step-0);
+  line-height: 1.62;
+  color: var(--text-2);
+  background: var(--void);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* A single warm spotlight from above, like a lens on a display stand.
+   One fixed layer, no animation, no cost. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(1100px 620px at 50% -12%, rgba(224, 168, 92, 0.1), transparent 62%),
+    radial-gradient(760px 520px at 88% 8%, rgba(255, 255, 255, 0.035), transparent 60%);
+}
+
+/* Film grain. Keeps large black areas from looking like flat dead pixels. */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.22;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+}
+
+img,
+svg,
+canvas {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: var(--text);
+  text-wrap: balance;
+}
+
+h1,
+.display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--step-5);
+  line-height: 1.06;
+  letter-spacing: -0.015em;
+}
+
+h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--step-3);
+  line-height: 1.08;
+  letter-spacing: -0.012em;
+}
+
+h3,
+h4 {
+  font-family: var(--font-body);
+  font-weight: 550;
+  letter-spacing: -0.01em;
+  line-height: 1.32;
+}
+
+h3 {
+  font-size: var(--step-1);
+}
+
+p {
+  text-wrap: pretty;
+}
+
+strong {
+  font-weight: 570;
+  color: var(--text);
+}
+
+code,
+kbd,
+pre {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  font-feature-settings: 'liga' 0;
+}
+
+::selection {
+  background: var(--brass);
+  color: #17120a;
+}
+
+:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+  border-radius: var(--r-1);
+}
+
+/* ---- Scrollbars --------------------------------------------------------- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--shell-4) transparent;
+}
+*::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--shell-4);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: var(--r-pill);
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #34353d;
+  background-clip: content-box;
+}
+
+/* ---- Layout primitives -------------------------------------------------- */
+.container {
+  width: 100%;
+  max-width: var(--maxw);
+  margin-inline: auto;
+  padding-inline: clamp(1.15rem, 4vw, 2.75rem);
+}
+
+.section {
+  padding-block: clamp(3.5rem, 8vw, 7rem);
+}
+
+.stack > * + * {
+  margin-top: var(--sp-4);
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+  font-weight: 500;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+
+.lede {
+  font-size: var(--step-1);
+  line-height: 1.55;
+  color: var(--text-2);
+  max-width: 58ch;
+}
+
+.muted {
+  color: var(--text-3);
+}
+
+/* Brass, in italic serif. One word per page, at most. */
+.gradient-text {
+  color: var(--brass);
+  font-style: italic;
+}
+
+.hairline {
+  height: 1px;
+  border: 0;
+  background: var(--line);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: var(--sp-4);
+  z-index: 200;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--brass);
+  color: #17120a;
+  border-radius: var(--r-2);
+  transition: top 0.2s;
+}
+.skip-link:focus {
+  top: var(--sp-3);
+}
+
+/* ---- Grids -------------------------------------------------------------- */
+.grid {
+  display: grid;
+  gap: var(--sp-5);
+}
+.grid-2 {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+}
+.grid-3 {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 265px), 1fr));
+}
+
+/* ---- Motion safety ------------------------------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

@@ -256,4 +256,5 @@ TaskFence doesn't reproduce any of these — it explores what happens when the s
 - **Arbitrary malicious website code.** The site's own tool implementations are trusted to do what they say.
 - **A universal authorization standard.** This is a prototype exploring one interaction model, not a spec proposal.
 #   T a s k F e n c e  
+ #   T a s k F e n c e  
  

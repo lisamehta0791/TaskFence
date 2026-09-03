@@ -1,0 +1,39 @@
+{
+  "name": "taskfence",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "TaskFence — progressive, human-controlled delegation enforced at the WebMCP tool-call boundary.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --port 4173",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -b --noEmit false --dry 2>/dev/null || tsc -b"
+  },
+  "dependencies": {
+    "@react-three/fiber": "^8.17.10",
+    "motion": "^11.18.2",
+    "pdfjs-dist": "^4.10.38",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0",
+    "three": "^0.169.0",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.17",
+    "@types/react-dom": "^18.3.5",
+    "@types/three": "^0.169.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^30.0.1",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.11",
+    "vitest": "^2.1.8"
+  }
+}

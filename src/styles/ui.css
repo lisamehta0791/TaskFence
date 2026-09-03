@@ -1,0 +1,435 @@
+/* ==========================================================================
+   UI primitives: Button, Card, Badge, Modal
+   Machined parts: bevelled top edge, hard border, brass for anything live.
+   ========================================================================== */
+
+/* ---- Button ------------------------------------------------------------- */
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  border: 1px solid transparent;
+  border-radius: var(--r-2);
+  font-family: var(--font-body);
+  font-weight: 520;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+  text-decoration: none;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    color 0.2s,
+    box-shadow 0.25s;
+}
+
+.btn:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.btn--sm {
+  padding: 0.42rem 0.85rem;
+  font-size: var(--step--1);
+}
+.btn--md {
+  padding: 0.6rem 1.15rem;
+  font-size: var(--step-0);
+}
+.btn--lg {
+  padding: 0.82rem 1.6rem;
+  font-size: var(--step-0);
+}
+.btn--full {
+  width: 100%;
+}
+
+.btn--primary {
+  background: linear-gradient(180deg, var(--brass-hi), var(--brass) 45%, var(--brass-lo));
+  color: #17120a;
+  border-color: rgba(0, 0, 0, 0.35);
+  box-shadow: var(--bevel), 0 6px 18px -8px rgba(224, 168, 92, 0.55);
+  font-weight: 580;
+}
+.btn--primary:hover:not(:disabled) {
+  box-shadow: var(--bevel), 0 14px 34px -10px rgba(224, 168, 92, 0.8);
+}
+
+.btn--secondary {
+  background: var(--shell-2);
+  border-color: var(--line-2);
+  color: var(--text);
+  box-shadow: var(--bevel);
+}
+.btn--secondary:hover:not(:disabled) {
+  background: var(--shell-4);
+  border-color: var(--line-3);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--text-3);
+}
+.btn--ghost:hover:not(:disabled) {
+  color: var(--brass);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.btn--danger {
+  background: var(--deny-wash);
+  border-color: var(--deny-line);
+  color: #ffb3b3;
+}
+.btn--danger:hover:not(:disabled) {
+  background: rgba(255, 111, 111, 0.2);
+  border-color: var(--deny);
+}
+
+.btn--success {
+  background: var(--allow-wash);
+  border-color: var(--allow-line);
+  color: #a8ecca;
+}
+.btn--success:hover:not(:disabled) {
+  background: rgba(95, 211, 154, 0.2);
+  border-color: var(--allow);
+}
+
+/* A light sweep across the face on hover. Cheap, and it makes the surface
+   read as something physical rather than a coloured rectangle. */
+.btn__shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 32%, rgba(255, 255, 255, 0.28) 50%, transparent 68%);
+  transform: translateX(-130%);
+  transition: transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+.btn:hover:not(:disabled) .btn__shine {
+  transform: translateX(130%);
+}
+.btn--ghost .btn__shine {
+  display: none;
+}
+
+.btn__label {
+  position: relative;
+}
+
+.btn__spinner {
+  width: 13px;
+  height: 13px;
+  border: 1.5px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---- Card --------------------------------------------------------------- */
+.card {
+  position: relative;
+  display: block;
+  border-radius: var(--r-3);
+  background: linear-gradient(180deg, var(--shell-2), var(--shell));
+  border: 1px solid var(--line);
+  box-shadow: var(--bevel), var(--shadow-1);
+  transition:
+    border-color 0.25s,
+    box-shadow 0.25s,
+    background 0.25s;
+}
+
+.card--padded {
+  padding: clamp(1.1rem, 2.2vw, 1.65rem);
+}
+
+.card--flat {
+  background: transparent;
+  box-shadow: none;
+}
+
+.card__border {
+  display: none;
+}
+
+.card--brand {
+  border-color: var(--brass-line);
+  background: linear-gradient(180deg, rgba(224, 168, 92, 0.08), var(--shell));
+}
+.card--allow {
+  border-color: var(--allow-line);
+  background: linear-gradient(180deg, var(--allow-wash), var(--shell));
+}
+.card--ask {
+  border-color: var(--ask-line);
+  background: linear-gradient(180deg, var(--ask-wash), var(--shell));
+}
+.card--deny {
+  border-color: var(--deny-line);
+  background: linear-gradient(180deg, var(--deny-wash), var(--shell));
+}
+
+.card--interactive {
+  cursor: pointer;
+}
+.card--interactive:hover {
+  border-color: var(--brass-line);
+  box-shadow: var(--bevel), var(--shadow-2), 0 0 0 1px rgba(224, 168, 92, 0.14);
+  background: linear-gradient(180deg, var(--shell-3), var(--shell));
+}
+
+.card__title {
+  font-family: var(--font-body);
+  font-weight: 550;
+  font-size: var(--step-1);
+  color: var(--text);
+  margin-bottom: var(--sp-2);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  letter-spacing: -0.01em;
+}
+
+.card p {
+  color: var(--text-2);
+  font-size: var(--step-0);
+}
+
+/* ---- Badge -------------------------------------------------------------- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 0.16rem 0.48rem;
+  border-radius: var(--r-1);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  line-height: 1.6;
+  border: 1px solid;
+  white-space: nowrap;
+}
+
+.badge--allow {
+  background: var(--allow-wash);
+  color: var(--allow);
+  border-color: var(--allow-line);
+}
+.badge--ask {
+  background: var(--ask-wash);
+  color: var(--ask);
+  border-color: var(--ask-line);
+}
+.badge--deny {
+  background: var(--deny-wash);
+  color: var(--deny);
+  border-color: var(--deny-line);
+}
+.badge--brand {
+  background: transparent;
+  color: var(--text-2);
+  border-color: var(--line-2);
+}
+.badge--accent {
+  background: var(--brass-wash);
+  color: var(--brass);
+  border-color: var(--brass-line);
+}
+.badge--neutral {
+  background: transparent;
+  color: var(--text-3);
+  border-color: var(--line);
+}
+
+.badge__icon {
+  font-size: 0.9em;
+  line-height: 1;
+}
+
+.badge__pulse {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+  animation: badge-pulse 2s ease-in-out infinite;
+}
+
+@keyframes badge-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.28;
+  }
+}
+
+/* ---- Modal -------------------------------------------------------------- */
+.modal-root {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-4);
+}
+
+.modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 4, 6, 0.78);
+  backdrop-filter: blur(6px);
+}
+
+.modal {
+  position: relative;
+  width: min(100%, 580px);
+  max-height: min(88vh, 900px);
+  overflow-y: auto;
+  border-radius: var(--r-4);
+  border: 1px solid var(--line-2);
+  background: linear-gradient(180deg, var(--shell-2), var(--shell));
+  box-shadow: var(--bevel), var(--shadow-3);
+}
+
+.modal--lg {
+  width: min(100%, 700px);
+}
+
+.modal__glow {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--brass), transparent);
+}
+.modal--ask .modal__glow {
+  background: linear-gradient(90deg, transparent, var(--ask), transparent);
+}
+.modal--deny .modal__glow {
+  background: linear-gradient(90deg, transparent, var(--deny), transparent);
+}
+
+.modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-5) var(--sp-5) var(--sp-3);
+}
+
+.modal__title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--step-2);
+  line-height: 1.15;
+  color: var(--text);
+}
+
+.modal__subtitle {
+  margin-top: var(--sp-2);
+  color: var(--text-2);
+  font-size: var(--step-0);
+}
+
+.modal__close {
+  background: var(--shell-3);
+  border: 1px solid var(--line);
+  color: var(--text-3);
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-2);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.2s, color 0.2s;
+}
+.modal__close:hover {
+  border-color: var(--line-3);
+  color: var(--text);
+}
+
+.modal__body {
+  padding: 0 var(--sp-5) var(--sp-5);
+}
+
+.modal__foot {
+  position: sticky;
+  bottom: 0;
+  padding: var(--sp-4) var(--sp-5);
+  border-top: 1px solid var(--line);
+  background: var(--shell);
+}
+
+/* ---- Route fallback ----------------------------------------------------- */
+.route-fallback {
+  min-height: 60vh;
+  display: grid;
+  place-items: center;
+}
+
+@keyframes sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+/* ---- Page-transition shutter --------------------------------------------
+   A panel that starts covering the viewport and pulls away to the right, so a
+   route change reads as a shutter opening. Its leading edge carries a brass
+   line, which is the only part you consciously notice. */
+.shutter {
+  position: fixed;
+  inset: 0;
+  z-index: 115;
+  pointer-events: none;
+  transform-origin: right;
+  background: linear-gradient(90deg, var(--void) 0%, #0c0d10 60%, #111217 100%);
+  border-right: 2px solid var(--brass);
+  box-shadow: 8px 0 40px rgba(224, 168, 92, 0.35);
+}
+
+/* ---- Button arrow + focus ring ------------------------------------------ */
+.btn__arrow {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: -2px;
+}
+
+/* A brass halo on keyboard focus, matching the hover glow rather than the
+   default outline, so tabbing through feels like the rest of the system. */
+.btn:focus-visible {
+  outline: none;
+  box-shadow: var(--bevel), 0 0 0 2px var(--void), 0 0 0 4px var(--brass);
+}
+
+/* Primary picks up a warmer halo when hovered — the one place brass glows. */
+.btn--primary:hover:not(:disabled) {
+  box-shadow:
+    var(--bevel),
+    0 0 0 1px rgba(224, 168, 92, 0.55),
+    0 16px 40px -12px rgba(224, 168, 92, 0.75);
+}
+
+/* ---- Main region --------------------------------------------------------
+   A floor under the page so the footer does not jump while one route swaps
+   for another. */
+#main {
+  display: block;
+  min-height: 62vh;
+}
